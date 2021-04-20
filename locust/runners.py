@@ -8,7 +8,7 @@ from typing import Type, List
 import warnings
 from uuid import uuid4
 from time import time
-
+import os
 import gevent
 import greenlet
 import psutil
@@ -803,14 +803,14 @@ class WorkerRunner(DistributedRunner):
                 self.client.send(Message("spawning", None, self.client_id))
                 job = msg.data
                 self.spawn_rate = job["spawn_rate"]
-                self.target_user_count = job["num_users"]
+                self.target_user_count = os.environ["WORKER_LIMIT_USERS"] or job["num_users"]
                 self.environment.host = job["host"]
                 self.environment.stop_timeout = job["stop_timeout"]
                 if self.spawning_greenlet:
                     # kill existing spawning greenlet before we launch new one
                     self.spawning_greenlet.kill(block=True)
                 self.spawning_greenlet = self.greenlet.spawn(
-                    lambda: self.start(user_count=job["num_users"], spawn_rate=job["spawn_rate"])
+                    lambda: self.start(user_count=int(self.target_user_count), spawn_rate=job["spawn_rate"])
                 )
                 self.spawning_greenlet.link_exception(greenlet_exception_handler)
             elif msg.type == "stop":
